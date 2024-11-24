@@ -1,0 +1,6 @@
+services:
+  arch:
+    build: .
+    container_name: arch
+    volumes:
+      - .:/app
