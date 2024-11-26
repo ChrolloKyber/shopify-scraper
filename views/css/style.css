@@ -1,0 +1,14 @@
+.product-image {
+  width: 25%;
+  /* Set the image width to 25% of its original size */
+  height: auto;
+  /* Maintain the aspect ratio */
+}
+
+/* Optionally, add styling to center the cards or adjust their layout */
+.card {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  text-align: center;
+}
