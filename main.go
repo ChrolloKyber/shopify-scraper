@@ -1,7 +1,10 @@
 package main
 
+import "net/http"
+
 func main() {
 	ScrapeJSON()
 
-	ReadJSON()
+	http.HandleFunc("/", ReadJSON)
+	http.ListenAndServe(":8000", nil)
 }
