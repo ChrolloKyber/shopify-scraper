@@ -6,9 +6,14 @@ import (
 	"os"
 )
 
+type FeaturedImage struct {
+	Link string `json:"src"`
+}
+
 type Variant struct {
-	Title string `json:"title"`
-	Price string `json:"price"`
+	Title         string        `json:"title"`
+	Price         string        `json:"price"`
+	FeaturedImage FeaturedImage `json:"featured_image"`
 }
 
 type Product struct {
@@ -18,6 +23,13 @@ type Product struct {
 
 type ProductsResponse struct {
 	Products []Product `json:"products"`
+}
+
+type VariantData struct {
+	ImageLink    string
+	ProductTitle string
+	VariantName  string
+	Price        string
 }
 
 func ReadJSON() {
@@ -45,8 +57,12 @@ func ReadJSON() {
 		for _, product := range products.Products {
 			fmt.Printf("Product name - %s\n", product.Title)
 			for _, variant := range product.Variant {
-				fmt.Printf("\tName - %s, Price - %s\n", variant.Title, variant.Price)
+				fmt.Printf("\tName - %s, Price - %s, Link - %s\n", variant.Title, variant.Price, variant.FeaturedImage.Link)
 			}
 		}
 	}
 }
+
+/* func Server() {
+	fmt.Println("Hello")
+} */

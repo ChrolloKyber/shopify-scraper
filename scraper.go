@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 )
 
 func ScrapeJSON() {
@@ -43,7 +42,5 @@ func ScrapeJSON() {
 		if err != nil {
 			fmt.Println("Error saving file", err)
 		}
-
-		exec.Command("prettier", "-w", fileName).Run()
 	}
 }
