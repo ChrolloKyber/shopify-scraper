@@ -72,16 +72,6 @@ func ReadJSON(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		/* for _, product := range products.Products {
-			fmt.Printf("Product name - %s\n", product.Title)
-			for _, variant := range product.Variant {
-				if variant.FeaturedImage.Link != "" {
-					fmt.Printf("\tName - %s, Price - %s, Link - %s\n", variant.Title, variant.Price, variant.FeaturedImage.Link)
-				} else if len(product.Images) != 0 {
-					fmt.Printf("\tName - %s, Price - %s, Link - %s\n", variant.Title, variant.Price, product.Images[0].Link)
-				}
-			}
-		} */
 		for _, product := range products.Products {
 			for _, variant := range product.Variant {
 				// Determine the image link
@@ -114,8 +104,6 @@ func ReadJSON(w http.ResponseWriter, r *http.Request) {
 	data := TemplateData{
 		Variants: variants,
 	}
-
-	w.Header().Set("Content-Type", "text/html")
 
 	err = tmpl.Execute(w, data)
 	if err != nil {
