@@ -1,3 +1,3 @@
-module github.com/ChrolloKryber/keeb-scrape
+module github.com/ChrolloKryber/keeb-scraper
 
 go 1.23.3
