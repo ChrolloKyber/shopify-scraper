@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 )
 
 func DownloadJSON() {
@@ -65,5 +66,8 @@ func DownloadJSON() {
 }
 
 func main() {
+	start := time.Now()
 	DownloadJSON()
+	since := time.Since(start)
+	fmt.Printf("Time since started downloading: %v\n", since)
 }
