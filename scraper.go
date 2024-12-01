@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"sync"
-	"time"
 )
 
 func DownloadJSON() {
@@ -63,11 +62,4 @@ func DownloadJSON() {
 	}
 	wg.Wait()
 	fmt.Println("All tasks completed.")
-}
-
-func main() {
-	start := time.Now()
-	DownloadJSON()
-	since := time.Since(start)
-	fmt.Printf("Time since started downloading: %v\n", since)
 }

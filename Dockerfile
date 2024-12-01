@@ -1,5 +1,5 @@
-FROM archlinux
+FROM golang:bookworm
 WORKDIR /app
 COPY . .
-RUN pacman -Sy go --needed --noconfirm
-CMD [ "go", "run", "." ]
+RUN apt update -y && apt upgrade -y
+CMD ["go", "run", "."]
