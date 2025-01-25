@@ -1,5 +1,6 @@
-FROM golang:bookworm
+FROM archlinux
 WORKDIR /app
+RUN pacman -Syu --noconfirm
+RUN pacman -S go prettier --noconfirm
 COPY . .
-RUN apt update -y && apt upgrade -y
 CMD ["go", "run", "."]
