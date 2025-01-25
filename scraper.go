@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"sync"
 )
 
@@ -24,8 +25,8 @@ func DownloadJSON() {
 		fmt.Printf("Error reading CSV file: %s", err)
 	}
 
-	baseURL := "https://"
-	product := "/products.json"
+	const baseURL string = "https://"
+	const product string = "/products.json"
 	var wg sync.WaitGroup
 
 	for k, v := range data {
@@ -42,8 +43,9 @@ func DownloadJSON() {
 				fmt.Println(err)
 			}
 			defer file.Body.Close()
+			filename := fmt.Sprintf("json/" + v[0] + ".json")
 
-			out, err := os.Create("json/" + v[0] + ".json")
+			out, err := os.Create(filename)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -61,5 +63,14 @@ func DownloadJSON() {
 		}(v)
 	}
 	wg.Wait()
+	os.Chdir("json/")
+	cmd := exec.Command("prettier", "-w", "*")
+	stdOut, err := cmd.Output()
+	if err != nil {
+		fmt.Println("Error running program: ", err)
+	} else {
+		fmt.Println(string(stdOut))
+	}
+
 	fmt.Println("All tasks completed.")
 }

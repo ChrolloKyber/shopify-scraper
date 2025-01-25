@@ -1,7 +1,7 @@
 services:
-  arch:
+  container:
     build: .
-    container_name: arch
+    container_name: plsGo
     ports:
       - 8000:8000
     volumes:
