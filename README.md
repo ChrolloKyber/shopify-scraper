@@ -77,6 +77,7 @@ Running the server exposes API endpoints at `/api/refresh` and `/api/products`. 
 - The scraper only scrapes the first 250 products of a store
 - This is due to the Shopify API limitation
 - If run via Docker, the JSON files will have `root` as the owner
+- No currency information in the JSON files
 
 ## Dependencies
 
