@@ -4,13 +4,14 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"log"
 	"math"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
-	"text/template"
 )
 
 type ProductCard struct {
@@ -86,6 +87,8 @@ func getUniqueFilters(products []ProductCard) FilterData {
 	for vendor := range vendorMap {
 		vendors = append(vendors, vendor)
 	}
+	sort.Strings(tags)
+	sort.Strings(vendors)
 
 	return FilterData{
 		Tags:    tags,
