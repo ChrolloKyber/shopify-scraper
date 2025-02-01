@@ -30,10 +30,17 @@ git clone https://github.com/ChrolloKryber/shopify-scraper.git
 go run .
 ```
 
-OR
+- Run the server via Docker compose
 
 ```sh
 docker compose up --build
+```
+
+- Run the server via Docker
+
+```sh
+docker build -t shopify-scraper . &&
+docker run -p 8080:8080 --name shopify-scraper -itd shopify-scraper
 ```
 
 Running the server exposes API endpoints at `/api/refresh` and `/api/products`. The server serves the HTML templates at `/` at port `8080`.
@@ -57,8 +64,12 @@ Running the server exposes API endpoints at `/api/refresh` and `/api/products`. 
 
 - The scraper only scrapes the first 250 products of a store
 - This is due to the Shopify API limitation
+- If run via Docker, the JSON files will have `root` as the owner
 
 ## Dependencies
 
 - No external dependencies are required to run the server
-- Everything is included in the standard library
+- However, [Prettier](https://prettier.io/) is used to format the JSON files
+  - Install Prettier globally
+  - Running the server via docker will automatically format the JSON files
+- The server uses the standard library for all its operations-
