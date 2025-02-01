@@ -26,7 +26,7 @@ func DownloadJSON() {
 	}
 
 	const baseURL string = "https://"
-	const product string = "/products.json"
+	const product string = "/products.json?limit=250"
 	var wg sync.WaitGroup
 
 	for k, v := range data {
