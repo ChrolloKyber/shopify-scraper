@@ -8,9 +8,10 @@ import (
 
 type Info struct {
 	Products []struct {
-		Title       string `json:"title"`
-		Vendor      string `json:"vendor"`
-		ProductType string `json:"product_type"`
+		Title       string   `json:"title"`
+		Vendor      string   `json:"vendor"`
+		ProductType string   `json:"product_type"`
+		Tags        []string `json:"tags"`
 		Variants    []struct {
 			Title         string `json:"title"`
 			Price         string `json:"price"`

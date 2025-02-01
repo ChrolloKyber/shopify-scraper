@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"strings"
 	"text/template"
 )
 
@@ -15,11 +16,15 @@ type ProductCard struct {
 	ProductTitle string
 	Price        string
 	Available    bool
+	Tags         []string
+	Vendor       string
 }
 
 type PageData struct {
-	Products   []ProductCard
-	Pagination PaginationData
+	Products    []ProductCard
+	Pagination  PaginationData
+	Filters     FilterData
+	SearchQuery string
 }
 
 type PaginationData struct {
@@ -31,10 +36,76 @@ type PaginationData struct {
 	NextPage     int
 }
 
+type FilterData struct {
+	Tags    []string
+	Vendors []string
+	Active  struct {
+		Tag    string
+		Vendor string
+	}
+}
+
 const ITEMS_PER_PAGE = 50
 
+func getUniqueFilters(products []ProductCard) FilterData {
+	tagMap := make(map[string]bool)
+	vendorMap := make(map[string]bool)
+
+	for _, product := range products {
+		for _, tag := range product.Tags {
+			tagMap[tag] = true
+		}
+		vendorMap[product.Vendor] = true
+	}
+
+	var tags []string
+	var vendors []string
+	for tag := range tagMap {
+		tags = append(tags, tag)
+	}
+	for vendor := range vendorMap {
+		vendors = append(vendors, vendor)
+	}
+
+	return FilterData{
+		Tags:    tags,
+		Vendors: vendors,
+	}
+}
+
+func filterProducts(products []ProductCard, tag, vendor, search string) []ProductCard {
+	var filtered []ProductCard
+
+	for _, product := range products {
+		matchesTag := tag == "" || contains(product.Tags, tag)
+		matchesVendor := vendor == "" || product.Vendor == vendor
+		matchesSearch := search == "" ||
+			strings.Contains(strings.ToLower(product.ProductTitle), strings.ToLower(search)) ||
+			strings.Contains(strings.ToLower(product.Vendor), strings.ToLower(search))
+
+		if matchesTag && matchesVendor && matchesSearch {
+			filtered = append(filtered, product)
+		}
+	}
+
+	return filtered
+}
+
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
 func renderTemplate(w http.ResponseWriter, r *http.Request) {
+	tag := r.URL.Query().Get("tag")
+	vendor := r.URL.Query().Get("vendor")
+	search := r.URL.Query().Get("search")
 	pageStr := r.URL.Query().Get("page")
+
 	currentPage := 1
 	if pageStr != "" {
 		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
@@ -44,30 +115,42 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 
 	var allProducts []ProductCard
 	infoStructs := ReadJson()
-	var imageLink string
 	for _, v := range infoStructs {
 		for _, product := range v.Products {
+			var imageLink string
+			if len(product.Variants) > 0 && product.Variants[0].FeaturedImage.Src != "" {
+				imageLink = product.Variants[0].FeaturedImage.Src
+			} else if len(product.Images) > 0 {
+				imageLink = product.Images[0].Src
+			}
+
 			for _, variant := range product.Variants {
-				if variant.FeaturedImage.Src != "null" && len(product.Variants) > 1 {
-					imageLink = variant.FeaturedImage.Src
-				} else if len(product.Images) > 0 {
-					imageLink = product.Images[0].Src
-				}
 				allProducts = append(allProducts, ProductCard{
 					ImageLink:    imageLink,
-					ProductTitle: product.Title,
+					ProductTitle: fmt.Sprintf("%v - %v", product.Title, variant.Title),
 					Price:        variant.Price,
 					Available:    variant.Available,
+					Tags:         product.Tags,
+					Vendor:       product.Vendor,
 				})
 			}
 		}
 	}
 
-	totalItems := len(allProducts)
+	filters := getUniqueFilters(allProducts)
+	filters.Active.Tag = tag
+	filters.Active.Vendor = vendor
+
+	filteredProducts := filterProducts(allProducts, tag, vendor, search)
+
+	totalItems := len(filteredProducts)
 	totalPages := int(math.Ceil(float64(totalItems) / float64(ITEMS_PER_PAGE)))
 
 	if currentPage > totalPages {
 		currentPage = totalPages
+	}
+	if currentPage < 1 {
+		currentPage = 1
 	}
 
 	startIndex := (currentPage - 1) * ITEMS_PER_PAGE
@@ -76,7 +159,7 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 		endIndex = totalItems
 	}
 
-	pageProducts := allProducts[startIndex:endIndex]
+	pageProducts := filteredProducts[startIndex:endIndex]
 
 	pageData := PageData{
 		Products: pageProducts,
@@ -88,12 +171,15 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 			PreviousPage: currentPage - 1,
 			NextPage:     currentPage + 1,
 		},
+		Filters:     filters,
+		SearchQuery: search,
 	}
 
 	tmpl, err := template.ParseFiles(
 		"./views/index.html",
 		"./views/product_card.html",
 		"./views/pagination.html",
+		"./views/filters.html",
 	)
 	if err != nil {
 		fmt.Println("Error parsing template:", err)

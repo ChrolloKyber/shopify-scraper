@@ -8,10 +8,49 @@
     <link rel="stylesheet" href="/static/css/styles.css" />
   </head>
   <body>
+    {{template "filters" .}}
     <div class="container">
       {{range .Products}} {{template "product_card" .}} {{end}}
     </div>
     {{template "pagination" .Pagination}}
+
+    <script>
+      function toggleFilter(id) {
+        const content = document.getElementById(id);
+        const header = content.previousElementSibling;
+        const toggle = header.querySelector(".filter-group__toggle");
+
+        content.classList.toggle("filter-group__content--collapsed");
+        toggle.style.transform = content.classList.contains(
+          "filter-group__content--collapsed",
+        )
+          ? "rotate(-90deg)"
+          : "rotate(0deg)";
+      }
+
+      // Initialize filter states from localStorage
+      document.addEventListener("DOMContentLoaded", function () {
+        const filterIds = ["tags-filter", "vendors-filter"];
+        filterIds.forEach((id) => {
+          const savedState = localStorage.getItem(id + "-collapsed");
+          if (savedState === "true") {
+            toggleFilter(id);
+          }
+        });
+      });
+
+      // Save filter states to localStorage
+      const filterHeaders = document.querySelectorAll(".filter-group__header");
+      filterHeaders.forEach((header) => {
+        header.addEventListener("click", function () {
+          const content = this.nextElementSibling;
+          localStorage.setItem(
+            content.id + "-collapsed",
+            content.classList.contains("filter-group__content--collapsed"),
+          );
+        });
+      });
+    </script>
   </body>
 </html>
 {{end}}

@@ -1,0 +1,68 @@
+{{define "filters"}}
+<div class="filters">
+  <div class="search">
+    <form action="/" method="GET" class="search__form">
+      <input
+        type="text"
+        name="search"
+        placeholder="Search products..."
+        class="search__input"
+        value="{{.SearchQuery}}"
+      />
+      <button type="submit" class="search__button">Search</button>
+    </form>
+  </div>
+
+  <div class="filter-options">
+    <div class="filter-group">
+      <button
+        class="filter-group__header"
+        onclick="toggleFilter('tags-filter')"
+      >
+        <h3>Tags</h3>
+        <span class="filter-group__toggle">▼</span>
+      </button>
+      <div id="tags-filter" class="filter-group__content">
+        <a
+          href="/"
+          class="filter-link {{if not .Filters.Active.Tag}}active{{end}}"
+          >All</a
+        >
+        {{range .Filters.Tags}}
+        <a
+          href="/?tag={{.}}{{if $.Filters.Active.Vendor}}&vendor={{$.Filters.Active.Vendor}}{{end}}{{if $.SearchQuery}}&search={{$.SearchQuery}}{{end}}"
+          class="filter-link {{if eq . $.Filters.Active.Tag}}active{{end}}"
+        >
+          {{.}}
+        </a>
+        {{end}}
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <button
+        class="filter-group__header"
+        onclick="toggleFilter('vendors-filter')"
+      >
+        <h3>Vendors</h3>
+        <span class="filter-group__toggle">▼</span>
+      </button>
+      <div id="vendors-filter" class="filter-group__content">
+        <a
+          href="/"
+          class="filter-link {{if not .Filters.Active.Vendor}}active{{end}}"
+          >All</a
+        >
+        {{range .Filters.Vendors}}
+        <a
+          href="/?vendor={{.}}{{if $.Filters.Active.Tag}}&tag={{$.Filters.Active.Tag}}{{end}}{{if $.SearchQuery}}&search={{$.SearchQuery}}{{end}}"
+          class="filter-link {{if eq . $.Filters.Active.Vendor}}active{{end}}"
+        >
+          {{.}}
+        </a>
+        {{end}}
+      </div>
+    </div>
+  </div>
+</div>
+{{end}}
