@@ -178,14 +178,13 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, product := range info.Products {
-			var imageLink string
-			if len(product.Variants) > 0 && product.Variants[0].FeaturedImage.Src != "" {
-				imageLink = product.Variants[0].FeaturedImage.Src
-			} else if len(product.Images) > 0 {
-				imageLink = product.Images[0].Src
-			}
-
 			for _, variant := range product.Variants {
+				var imageLink string
+				if len(product.Variants) > 0 && variant.FeaturedImage.Src != "" {
+					imageLink = variant.FeaturedImage.Src
+				} else if len(product.Images) > 0 {
+					imageLink = product.Images[0].Src
+				}
 				allProducts = append(allProducts, ProductCard{
 					ImageLink:    imageLink,
 					ProductTitle: fmt.Sprintf("%s - %s", product.Title, variant.Title),
