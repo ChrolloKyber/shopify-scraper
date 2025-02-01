@@ -4,14 +4,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="static/css/styles.css" />
     <title>KeebScraper</title>
+    <link rel="stylesheet" href="/static/css/styles.css" />
   </head>
-
   <body>
     <div class="container">
-      {{range .}} {{template "product_card" .}} {{end}}
+      {{range .Products}} {{template "product_card" .}} {{end}}
     </div>
+    {{template "pagination" .Pagination}}
   </body>
 </html>
 {{end}}
