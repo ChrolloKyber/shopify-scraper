@@ -1,6 +1,7 @@
 package main
 
 func main() {
+	// TODO: Implement server
 	DownloadJSON()
-	// ReadJSON()
+	ReadJson()
 }

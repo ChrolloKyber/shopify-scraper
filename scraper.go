@@ -71,6 +71,7 @@ func DownloadJSON() {
 	} else {
 		fmt.Println(string(stdOut))
 	}
+	os.Chdir("..")
 
 	fmt.Println("All tasks completed.")
 }

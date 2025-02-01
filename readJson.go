@@ -6,44 +6,43 @@ import (
 	"os"
 )
 
-type Variants struct {
-	Title string `json:"title"`
-	Price string `json:"price"`
+type Info struct {
+	Products []struct {
+		Title       string `json:"title"`
+		Vendor      string `json:"vendor"`
+		ProductType string `json:"product_type"`
+		Variants    []struct {
+			Title string `json:"title"`
+			Price string `json:"price"`
+		} `json:"variants"`
+		Images []struct {
+			Src string `json:"src"`
+		} `json:"images"`
+	} `json:"products"`
 }
 
-type Product struct {
-	Title    string     `json:"title"`
-	Variants []Variants `json:"variants"`
-}
-
-type Products struct {
-	Product []Product `json:"products"`
-}
-
-func ReadJSON() {
-	dirFiles, err := os.ReadDir("json")
-
+func ReadJson() []Info {
+	dir, err := os.ReadDir("json")
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("Error reading directory: ", err)
 	}
 
-	for _, v := range dirFiles {
+	infoStruct := []Info{}
+
+	for _, v := range dir {
 		jsonFile, err := os.ReadFile(fmt.Sprintf("./json/%s", v.Name()))
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("Error reading the file: ", err)
 		}
-		var Products Products
+
+		var Products Info
+
 		err = json.Unmarshal(jsonFile, &Products)
 
 		if err != nil {
-			fmt.Println("Error unmarshalling the JSON: ", err)
+			fmt.Println("Error unmarshalling the file: ", err)
 		}
-
-		for _, product := range Products.Product {
-			fmt.Printf("Product name - %v\n", product.Title)
-			for _, variant := range product.Variants {
-				fmt.Printf("\tVariant - %v, Price - %v\n", variant.Title, variant.Price)
-			}
-		}
+		infoStruct = append(infoStruct, Products)
 	}
+	return infoStruct
 }
