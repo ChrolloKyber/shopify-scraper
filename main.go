@@ -133,29 +133,59 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Read sites.csv to build site-domain map
+	sites := readSites()
+	siteDomainMap := make(map[string]string)
+	for _, site := range sites {
+		siteDomainMap[site[0]] = site[1]
+	}
+
 	var allProducts []ProductCard
-	infoStructs := ReadJson()
-	for _, v := range infoStructs {
-		var domain string
-		sites := readSites()
-		for _, site := range sites {
-			if site[0] == strings.ToLower(v.Products[0].Vendor) {
-				domain = site[1]
-				break
-			}
+
+	// Read JSON directory
+	jsonDir, err := os.ReadDir("json")
+	if err != nil {
+		log.Printf("Error reading JSON directory: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	for _, entry := range jsonDir {
+		if entry.IsDir() {
+			continue
 		}
 
-		for _, product := range v.Products {
+		filename := entry.Name()
+		siteName := strings.TrimSuffix(filename, ".json")
+		domain, ok := siteDomainMap[siteName]
+		if !ok {
+			continue // Skip if site not found in CSV
+		}
+
+		jsonFile, err := os.ReadFile("./json/" + filename)
+		if err != nil {
+			log.Printf("Error reading JSON file %s: %v", filename, err)
+			continue
+		}
+
+		var info Info
+		if err := json.Unmarshal(jsonFile, &info); err != nil {
+			log.Printf("Error unmarshalling JSON file %s: %v", filename, err)
+			continue
+		}
+
+		for _, product := range info.Products {
 			var imageLink string
+			if len(product.Variants) > 0 && product.Variants[0].FeaturedImage.Src != "" {
+				imageLink = product.Variants[0].FeaturedImage.Src
+			} else if len(product.Images) > 0 {
+				imageLink = product.Images[0].Src
+			}
+
 			for _, variant := range product.Variants {
-				if len(product.Variants) > 0 && product.Variants[0].FeaturedImage.Src != "" {
-					imageLink = variant.FeaturedImage.Src
-				} else if len(product.Images) > 0 {
-					imageLink = product.Images[0].Src
-				}
 				allProducts = append(allProducts, ProductCard{
 					ImageLink:    imageLink,
-					ProductTitle: fmt.Sprintf("%v - %v", product.Title, variant.Title),
+					ProductTitle: fmt.Sprintf("%s - %s", product.Title, variant.Title),
 					Price:        variant.Price,
 					Available:    variant.Available,
 					Tags:         product.Tags,
