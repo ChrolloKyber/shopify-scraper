@@ -11,7 +11,6 @@ import (
 )
 
 func DownloadJSON() {
-	os.Mkdir("json", 0755)
 	file, err := os.Open("sites.csv")
 	if err != nil {
 		fmt.Printf("Error opening the CSV file: %s", err)

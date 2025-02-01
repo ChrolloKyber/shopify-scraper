@@ -19,7 +19,6 @@
   border-radius: 8px;
   overflow: hidden;
   transition: transform 0.2s;
-  background-color: #3c3836;
 }
 
 .card--product:hover {

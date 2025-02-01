@@ -270,6 +270,10 @@ func refreshData(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	err := os.Mkdir("json", 0755)
+	if err != nil {
+		log.Printf("Error creating JSON directory: %v", err)
+	}
 	fs := http.FileServer(http.Dir("./static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 	http.HandleFunc("/", renderTemplate)
