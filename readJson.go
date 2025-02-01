@@ -12,8 +12,12 @@ type Info struct {
 		Vendor      string `json:"vendor"`
 		ProductType string `json:"product_type"`
 		Variants    []struct {
-			Title string `json:"title"`
-			Price string `json:"price"`
+			Title         string `json:"title"`
+			Price         string `json:"price"`
+			Available     bool   `json:"available"`
+			FeaturedImage struct {
+				Src string `json:"src"`
+			} `json:"featured_image"`
 		} `json:"variants"`
 		Images []struct {
 			Src string `json:"src"`
