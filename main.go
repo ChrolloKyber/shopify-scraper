@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"log"
 	"math"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"text/template"
@@ -18,6 +20,8 @@ type ProductCard struct {
 	Available    bool
 	Tags         []string
 	Vendor       string
+	Handle       string
+	Domain       string
 }
 
 type PageData struct {
@@ -46,6 +50,22 @@ type FilterData struct {
 }
 
 const ITEMS_PER_PAGE = 50
+
+func readSites() [][]string {
+	file, err := os.Open("sites.csv")
+	if err != nil {
+		log.Printf("Error opening sites.csv: %v", err)
+		return nil
+	}
+	defer file.Close()
+	csvReader := csv.NewReader(file)
+	sites, err := csvReader.ReadAll()
+	if err != nil {
+		log.Printf("Error reading sites.csv: %v", err)
+		return nil
+	}
+	return sites[1:]
+}
 
 func getUniqueFilters(products []ProductCard) FilterData {
 	tagMap := make(map[string]bool)
@@ -116,15 +136,23 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 	var allProducts []ProductCard
 	infoStructs := ReadJson()
 	for _, v := range infoStructs {
+		var domain string
+		sites := readSites()
+		for _, site := range sites {
+			if site[0] == strings.ToLower(v.Products[0].Vendor) {
+				domain = site[1]
+				break
+			}
+		}
+
 		for _, product := range v.Products {
 			var imageLink string
-			if len(product.Variants) > 0 && product.Variants[0].FeaturedImage.Src != "" {
-				imageLink = product.Variants[0].FeaturedImage.Src
-			} else if len(product.Images) > 0 {
-				imageLink = product.Images[0].Src
-			}
-
 			for _, variant := range product.Variants {
+				if len(product.Variants) > 0 && product.Variants[0].FeaturedImage.Src != "" {
+					imageLink = variant.FeaturedImage.Src
+				} else if len(product.Images) > 0 {
+					imageLink = product.Images[0].Src
+				}
 				allProducts = append(allProducts, ProductCard{
 					ImageLink:    imageLink,
 					ProductTitle: fmt.Sprintf("%v - %v", product.Title, variant.Title),
@@ -132,6 +160,8 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 					Available:    variant.Available,
 					Tags:         product.Tags,
 					Vendor:       product.Vendor,
+					Handle:       product.Handle,
+					Domain:       domain,
 				})
 			}
 		}

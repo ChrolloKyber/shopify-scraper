@@ -1,19 +1,25 @@
 {{define "product_card"}}
 <div class="card card--product">
-  <img
-    src="{{.ImageLink}}"
-    alt="There should be an image here."
-    class="card__image"
-  />
-  <div class="card__content">
-    <h3 class="card__title">{{.ProductTitle}}</h3>
-    <p class="card__vendor">{{.Vendor}}</p>
-    <p class="card__price">{{.Price}}</p>
-    {{if .Available}}
-    <p class="in__stock">In Stock</p>
-    {{else}}
-    <p class="oos">Out Of Stock</p>
-    {{end}}
-  </div>
+  <a
+    href="https://{{.Domain}}/products/{{.Handle}}"
+    target="_blank"
+    class="card__link"
+  >
+    <img
+      src="{{.ImageLink}}"
+      alt="There should be an image here."
+      class="card__image"
+    />
+    <div class="card__content">
+      <h3 class="card__title">{{.ProductTitle}}</h3>
+      <p class="card__vendor">{{.Vendor}}</p>
+      <p class="card__price">{{.Price}}</p>
+      {{if .Available}}
+      <p class="in__stock">In Stock</p>
+      {{else}}
+      <p class="oos">Out Of Stock</p>
+      {{end}}
+    </div>
+  </a>
 </div>
 {{end}}

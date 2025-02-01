@@ -12,6 +12,7 @@ type Info struct {
 		Vendor      string   `json:"vendor"`
 		ProductType string   `json:"product_type"`
 		Tags        []string `json:"tags"`
+		Handle      string   `json:"handle"`
 		Variants    []struct {
 			Title         string `json:"title"`
 			Price         string `json:"price"`
