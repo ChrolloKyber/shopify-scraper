@@ -1,5 +1,17 @@
 # Shopify Scraper
 
+<!--toc:start-->
+
+- [Shopify Scraper](#shopify-scraper)
+  - [Description](#description)
+  - [Structure](#structure)
+  - [Usage](#usage)
+    - [Running the server](#running-the-server)
+  - [Adding Sites](#adding-sites)
+  - [Limitations](#limitations)
+  - [Dependencies](#dependencies)
+  <!--toc:end-->
+
 ## Description
 
 This is a simple scraper that uses the public `products.json` endpoint of a Shopify store to scrape all products and their variants. The scraper is written entirely in Go.
