@@ -25,6 +25,8 @@ type PaginationData struct {
 	HasNext      bool
 	PreviousPage int
 	NextPage     int
+	Tag          string
+	Vendor       string
 }
 
 type FilterData struct {

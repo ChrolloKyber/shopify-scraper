@@ -1,7 +1,11 @@
 {{define "pagination"}}
 <div class="pagination">
   {{if .HasPrevious}}
-  <a href="?page={{.PreviousPage}}" class="pagination__link">Previous</a>
+  <a
+    href="?page={{.PreviousPage}}{{if .Tag}}&tag={{.Tag}}{{end}}{{if .Vendor}}&vendor={{.Vendor}}{{end}}"
+    class="pagination__link"
+    >Previous</a
+  >
   {{else}}
   <span class="pagination__link pagination__link--disabled">Previous</span>
   {{end}}
@@ -9,7 +13,11 @@
   <span class="pagination__info">Page {{.CurrentPage}} of {{.TotalPages}}</span>
 
   {{if .HasNext}}
-  <a href="?page={{.NextPage}}" class="pagination__link">Next</a>
+  <a
+    href="?page={{.NextPage}}{{if .Tag}}&tag={{.Tag}}{{end}}{{if .Vendor}}&vendor={{.Vendor}}{{end}}"
+    class="pagination__link"
+    >Next</a
+  >
   {{else}}
   <span class="pagination__link pagination__link--disabled">Next</span>
   {{end}}

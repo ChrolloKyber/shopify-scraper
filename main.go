@@ -238,6 +238,8 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 			HasNext:      currentPage < totalPages,
 			PreviousPage: currentPage - 1,
 			NextPage:     currentPage + 1,
+			Tag:          tag,
+			Vendor:       vendor,
 		},
 		Filters:     filters,
 		SearchQuery: search,
