@@ -12,92 +12,68 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/ChrolloKryber/shopify-scraper/models"
 )
-
-type ProductCard struct {
-	ImageLink    string
-	ProductTitle string
-	Price        string
-	Available    bool
-	Tags         []string
-	Vendor       string
-	Handle       string
-	Domain       string
-}
-
-type PageData struct {
-	Products    []ProductCard
-	Pagination  PaginationData
-	Filters     FilterData
-	SearchQuery string
-}
-
-type PaginationData struct {
-	CurrentPage  int
-	TotalPages   int
-	HasPrevious  bool
-	HasNext      bool
-	PreviousPage int
-	NextPage     int
-}
-
-type FilterData struct {
-	Tags    []string
-	Vendors []string
-	Active  struct {
-		Tag    string
-		Vendor string
-	}
-}
 
 const ITEMS_PER_PAGE = 50
 
-func readSites() [][]string {
+// Reads sites.csv and returns a mapping of site names to domains
+func readSites() map[string]string {
 	file, err := os.Open("sites.csv")
 	if err != nil {
 		log.Printf("Error opening sites.csv: %v", err)
 		return nil
 	}
 	defer file.Close()
+
 	csvReader := csv.NewReader(file)
-	sites, err := csvReader.ReadAll()
+	records, err := csvReader.ReadAll()
 	if err != nil {
 		log.Printf("Error reading sites.csv: %v", err)
 		return nil
 	}
-	return sites[1:]
+
+	siteDomainMap := make(map[string]string)
+	for _, record := range records[1:] { // Skipping the header
+		if len(record) >= 2 {
+			siteDomainMap[record[0]] = record[1]
+		}
+	}
+	return siteDomainMap
 }
 
-func getUniqueFilters(products []ProductCard) FilterData {
-	tagMap := make(map[string]bool)
-	vendorMap := make(map[string]bool)
+// Extracts unique filters from the product list
+func getUniqueFilters(products []models.ProductCard) models.FilterData {
+	tagSet := make(map[string]bool)
+	vendorSet := make(map[string]bool)
 
 	for _, product := range products {
 		for _, tag := range product.Tags {
-			tagMap[tag] = true
+			tagSet[tag] = true
 		}
-		vendorMap[product.Vendor] = true
+		vendorSet[product.Vendor] = true
 	}
 
-	var tags []string
-	var vendors []string
-	for tag := range tagMap {
-		tags = append(tags, tag)
-	}
-	for vendor := range vendorMap {
-		vendors = append(vendors, vendor)
-	}
-	sort.Strings(tags)
-	sort.Strings(vendors)
+	tags := sortedKeys(tagSet)
+	vendors := sortedKeys(vendorSet)
 
-	return FilterData{
-		Tags:    tags,
-		Vendors: vendors,
-	}
+	return models.FilterData{Tags: tags, Vendors: vendors}
 }
 
-func filterProducts(products []ProductCard, tag, vendor, search string) []ProductCard {
-	var filtered []ProductCard
+// Utility function to extract sorted keys from a map
+func sortedKeys(m map[string]bool) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// Filters products based on tag, vendor, and search query
+func filterProducts(products []models.ProductCard, tag, vendor, search string) []models.ProductCard {
+	var filtered []models.ProductCard
 
 	for _, product := range products {
 		matchesTag := tag == "" || contains(product.Tags, tag)
@@ -114,6 +90,7 @@ func filterProducts(products []ProductCard, tag, vendor, search string) []Produc
 	return filtered
 }
 
+// Checks if a slice contains a specific element
 func contains(slice []string, item string) bool {
 	for _, s := range slice {
 		if s == item {
@@ -123,60 +100,54 @@ func contains(slice []string, item string) bool {
 	return false
 }
 
-func renderTemplate(w http.ResponseWriter, r *http.Request) {
-	tag := r.URL.Query().Get("tag")
-	vendor := r.URL.Query().Get("vendor")
-	search := r.URL.Query().Get("search")
-	pageStr := r.URL.Query().Get("page")
-
-	currentPage := 1
-	if pageStr != "" {
-		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
-			currentPage = page
-		}
+// Loads JSON data from files, downloading them if necessary
+func loadProducts() []models.ProductCard {
+	if _, err := os.Stat("json"); os.IsNotExist(err) {
+		os.Mkdir("json", 0755)
 	}
 
-	// Read sites.csv to build site-domain map
-	sites := readSites()
-	siteDomainMap := make(map[string]string)
-	for _, site := range sites {
-		siteDomainMap[site[0]] = site[1]
+	jsonDir, _ := os.ReadDir("json")
+	if len(jsonDir) == 0 {
+		fmt.Println("No JSON data found. Downloading...")
+		DownloadJSON()
+		jsonDir, _ = os.ReadDir("json")
 	}
 
-	var allProducts []ProductCard
-
-	// Read JSON directory
-	jsonDir, err := os.ReadDir("json")
-	if err != nil {
-		log.Printf("Error reading JSON directory: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	// Read site-domain mappings
+	siteDomainMap := readSites()
+	if siteDomainMap == nil {
+		log.Println("No sites.csv data available.")
+		return nil
 	}
 
+	var allProducts []models.ProductCard
+
+	// Load JSON files
 	for _, entry := range jsonDir {
-		if entry.IsDir() {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
 			continue
 		}
 
 		filename := entry.Name()
 		siteName := strings.TrimSuffix(filename, ".json")
-		domain, ok := siteDomainMap[siteName]
-		if !ok {
-			continue // Skip if site not found in CSV
+		domain, exists := siteDomainMap[siteName]
+		if !exists {
+			continue // Skip if site is not in CSV
 		}
 
-		jsonFile, err := os.ReadFile("./json/" + filename)
+		jsonFile, err := os.ReadFile("json/" + filename)
 		if err != nil {
 			log.Printf("Error reading JSON file %s: %v", filename, err)
 			continue
 		}
 
-		var info Info
+		var info models.Info
 		if err := json.Unmarshal(jsonFile, &info); err != nil {
 			log.Printf("Error unmarshalling JSON file %s: %v", filename, err)
 			continue
 		}
 
+		// Convert products into ProductCard format
 		for _, product := range info.Products {
 			for _, variant := range product.Variants {
 				var imageLink string
@@ -185,7 +156,8 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 				} else if len(product.Images) > 0 {
 					imageLink = product.Images[0].Src
 				}
-				allProducts = append(allProducts, ProductCard{
+
+				allProducts = append(allProducts, models.ProductCard{
 					ImageLink:    imageLink,
 					ProductTitle: fmt.Sprintf("%s - %s", product.Title, variant.Title),
 					Price:        variant.Price,
@@ -199,15 +171,41 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	return allProducts
+}
+
+// Handler function to render the index page
+func renderTemplate(w http.ResponseWriter, r *http.Request) {
+	tag := r.URL.Query().Get("tag")
+	vendor := r.URL.Query().Get("vendor")
+	search := r.URL.Query().Get("search")
+	pageStr := r.URL.Query().Get("page")
+
+	currentPage := 1
+	if pageStr != "" {
+		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
+			currentPage = page
+		}
+	}
+
+	// Load products
+	allProducts := loadProducts()
+	if allProducts == nil {
+		http.Error(w, "Failed to load products", http.StatusInternalServerError)
+		return
+	}
+
+	// Generate filters
 	filters := getUniqueFilters(allProducts)
 	filters.Active.Tag = tag
 	filters.Active.Vendor = vendor
 
+	// Apply filtering
 	filteredProducts := filterProducts(allProducts, tag, vendor, search)
 
+	// Pagination logic
 	totalItems := len(filteredProducts)
 	totalPages := int(math.Ceil(float64(totalItems) / float64(ITEMS_PER_PAGE)))
-
 	if currentPage > totalPages {
 		currentPage = totalPages
 	}
@@ -223,9 +221,10 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 
 	pageProducts := filteredProducts[startIndex:endIndex]
 
-	pageData := PageData{
+	// Prepare page data
+	pageData := models.PageData{
 		Products: pageProducts,
-		Pagination: PaginationData{
+		Pagination: models.PaginationData{
 			CurrentPage:  currentPage,
 			TotalPages:   totalPages,
 			HasPrevious:  currentPage > 1,
@@ -237,6 +236,7 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 		SearchQuery: search,
 	}
 
+	// Render template
 	tmpl, err := template.ParseFiles(
 		"./views/index.html",
 		"./views/product_card.html",
@@ -244,43 +244,17 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 		"./views/filters.html",
 	)
 	if err != nil {
-		fmt.Println("Error parsing template:", err)
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 		return
 	}
 
-	err = tmpl.ExecuteTemplate(w, "index", pageData)
-	if err != nil {
-		fmt.Println("Error executing template:", err)
-		http.Error(w, "Error rendering template", http.StatusInternalServerError)
-		return
-	}
-}
-
-func serveInfo(w http.ResponseWriter, r *http.Request) {
-	infoStructs := ReadJson()
-	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(infoStructs)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error reading JSON: %v", err), http.StatusInternalServerError)
-	}
-}
-
-func refreshData(w http.ResponseWriter, r *http.Request) {
-	DownloadJSON()
-	serveInfo(w, r)
+	tmpl.ExecuteTemplate(w, "index", pageData)
 }
 
 func main() {
-	err := os.Mkdir("json", 0755)
-	if err != nil {
-		log.Printf("Error creating JSON directory: %v", err)
-	}
-	fs := http.FileServer(http.Dir("./static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	http.HandleFunc("/", renderTemplate)
-	http.HandleFunc("/api/refresh", refreshData)
-	http.HandleFunc("/api/products", serveInfo)
-	fmt.Println("Server is running on port 8080")
+
+	fmt.Println("Server running on port 8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
