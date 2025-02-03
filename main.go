@@ -151,15 +151,22 @@ func loadProducts() []models.ProductCard {
 		for _, product := range info.Products {
 			for _, variant := range product.Variants {
 				var imageLink string
+				var productTitle string
 				if len(product.Variants) > 0 && variant.FeaturedImage.Src != "" {
 					imageLink = variant.FeaturedImage.Src
 				} else if len(product.Images) > 0 {
 					imageLink = product.Images[0].Src
 				}
 
+				if variant.Title != "Default Title" {
+					productTitle = fmt.Sprintf("%s - %s", product.Title, variant.Title)
+				} else {
+					productTitle = product.Title
+				}
+
 				allProducts = append(allProducts, models.ProductCard{
 					ImageLink:    imageLink,
-					ProductTitle: fmt.Sprintf("%s - %s", product.Title, variant.Title),
+					ProductTitle: productTitle,
 					Price:        variant.Price,
 					Available:    variant.Available,
 					Tags:         product.Tags,
