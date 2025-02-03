@@ -18,10 +18,7 @@ import (
 
 const ITEMS_PER_PAGE = 50
 
-// GLobal variable
-var allProducts []models.ProductCard
-var filters models.FilterData
-
+// Reads sites.csv and returns a mapping of site names to domains
 func readSites() map[string]string {
 	file, err := os.Open("sites.csv")
 	if err != nil {
@@ -29,22 +26,52 @@ func readSites() map[string]string {
 		return nil
 	}
 	defer file.Close()
+
 	csvReader := csv.NewReader(file)
-	data, err := csvReader.ReadAll()
+	records, err := csvReader.ReadAll()
 	if err != nil {
 		log.Printf("Error reading sites.csv: %v", err)
 		return nil
 	}
 
 	siteDomainMap := make(map[string]string)
-	for _, row := range data[1:] {
-		if len(row) >= 2 {
-			siteDomainMap[row[0]] = row[1]
+	for _, record := range records[1:] { // Skipping the header
+		if len(record) >= 2 {
+			siteDomainMap[record[0]] = record[1]
 		}
 	}
 	return siteDomainMap
 }
 
+// Extracts unique filters from the product list
+func getUniqueFilters(products []models.ProductCard) models.FilterData {
+	tagSet := make(map[string]bool)
+	vendorSet := make(map[string]bool)
+
+	for _, product := range products {
+		for _, tag := range product.Tags {
+			tagSet[tag] = true
+		}
+		vendorSet[product.Vendor] = true
+	}
+
+	tags := sortedKeys(tagSet)
+	vendors := sortedKeys(vendorSet)
+
+	return models.FilterData{Tags: tags, Vendors: vendors}
+}
+
+// Utility function to extract sorted keys from a map
+func sortedKeys(m map[string]bool) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// Filters products based on tag, vendor, and search query
 func filterProducts(products []models.ProductCard, tag, vendor, search string) []models.ProductCard {
 	var filtered []models.ProductCard
 
@@ -63,6 +90,7 @@ func filterProducts(products []models.ProductCard, tag, vendor, search string) [
 	return filtered
 }
 
+// Checks if a slice contains a specific element
 func contains(slice []string, item string) bool {
 	for _, s := range slice {
 		if s == item {
@@ -72,31 +100,42 @@ func contains(slice []string, item string) bool {
 	return false
 }
 
-func loadData() {
+// Loads JSON data from files, downloading them if necessary
+func loadProducts() []models.ProductCard {
+	if _, err := os.Stat("json"); os.IsNotExist(err) {
+		os.Mkdir("json", 0755)
+	}
+
+	jsonDir, _ := os.ReadDir("json")
+	if len(jsonDir) == 0 {
+		fmt.Println("No JSON data found. Downloading...")
+		DownloadJSON()
+		jsonDir, _ = os.ReadDir("json")
+	}
+
+	// Read site-domain mappings
 	siteDomainMap := readSites()
 	if siteDomainMap == nil {
-		return
+		log.Println("No sites.csv data available.")
+		return nil
 	}
 
-	jsonDir, err := os.ReadDir("json")
-	if err != nil {
-		log.Printf("Error reading JSON directory: %v", err)
-		return
-	}
+	var allProducts []models.ProductCard
 
+	// Load JSON files
 	for _, entry := range jsonDir {
-		if entry.IsDir() {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
 			continue
 		}
 
 		filename := entry.Name()
 		siteName := strings.TrimSuffix(filename, ".json")
-		domain, ok := siteDomainMap[siteName]
-		if !ok {
-			continue
+		domain, exists := siteDomainMap[siteName]
+		if !exists {
+			continue // Skip if site is not in CSV
 		}
 
-		jsonFile, err := os.ReadFile("./json/" + filename)
+		jsonFile, err := os.ReadFile("json/" + filename)
 		if err != nil {
 			log.Printf("Error reading JSON file %s: %v", filename, err)
 			continue
@@ -108,9 +147,10 @@ func loadData() {
 			continue
 		}
 
+		// Convert products into ProductCard format
 		for _, product := range info.Products {
 			for _, variant := range product.Variants {
-				imageLink := ""
+				var imageLink string
 				if len(product.Variants) > 0 && variant.FeaturedImage.Src != "" {
 					imageLink = variant.FeaturedImage.Src
 				} else if len(product.Images) > 0 {
@@ -131,36 +171,10 @@ func loadData() {
 		}
 	}
 
-	filters = getUniqueFilters(allProducts)
+	return allProducts
 }
 
-func getUniqueFilters(products []models.ProductCard) models.FilterData {
-	tagMap := make(map[string]bool)
-	vendorMap := make(map[string]bool)
-
-	for _, product := range products {
-		for _, tag := range product.Tags {
-			tagMap[tag] = true
-		}
-		vendorMap[product.Vendor] = true
-	}
-
-	var tags, vendors []string
-	for tag := range tagMap {
-		tags = append(tags, tag)
-	}
-	for vendor := range vendorMap {
-		vendors = append(vendors, vendor)
-	}
-	sort.Strings(tags)
-	sort.Strings(vendors)
-
-	return models.FilterData{
-		Tags:    tags,
-		Vendors: vendors,
-	}
-}
-
+// Handler function to render the index page
 func renderTemplate(w http.ResponseWriter, r *http.Request) {
 	tag := r.URL.Query().Get("tag")
 	vendor := r.URL.Query().Get("vendor")
@@ -174,12 +188,24 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Load products
+	allProducts := loadProducts()
+	if allProducts == nil {
+		http.Error(w, "Failed to load products", http.StatusInternalServerError)
+		return
+	}
+
+	// Generate filters
+	filters := getUniqueFilters(allProducts)
 	filters.Active.Tag = tag
 	filters.Active.Vendor = vendor
+
+	// Apply filtering
 	filteredProducts := filterProducts(allProducts, tag, vendor, search)
+
+	// Pagination logic
 	totalItems := len(filteredProducts)
 	totalPages := int(math.Ceil(float64(totalItems) / float64(ITEMS_PER_PAGE)))
-
 	if currentPage > totalPages {
 		currentPage = totalPages
 	}
@@ -195,6 +221,7 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 
 	pageProducts := filteredProducts[startIndex:endIndex]
 
+	// Prepare page data
 	pageData := models.PageData{
 		Products: pageProducts,
 		Pagination: models.PaginationData{
@@ -209,7 +236,13 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 		SearchQuery: search,
 	}
 
-	tmpl, err := template.ParseFiles("./views/index.html", "./views/product_card.html", "./views/pagination.html", "./views/filters.html")
+	// Render template
+	tmpl, err := template.ParseFiles(
+		"./views/index.html",
+		"./views/product_card.html",
+		"./views/pagination.html",
+		"./views/filters.html",
+	)
 	if err != nil {
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 		return
@@ -219,11 +252,9 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	os.Mkdir("json", 0755)
-	loadData()
-	fs := http.FileServer(http.Dir("./static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	http.HandleFunc("/", renderTemplate)
-	log.Println("Server is running on port 8080")
+
+	fmt.Println("Server running on port 8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
