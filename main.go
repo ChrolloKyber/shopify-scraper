@@ -12,43 +12,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/ChrolloKryber/shopify-scraper/models"
 )
-
-type ProductCard struct {
-	ImageLink    string
-	ProductTitle string
-	Price        string
-	Available    bool
-	Tags         []string
-	Vendor       string
-	Handle       string
-	Domain       string
-}
-
-type PageData struct {
-	Products    []ProductCard
-	Pagination  PaginationData
-	Filters     FilterData
-	SearchQuery string
-}
-
-type PaginationData struct {
-	CurrentPage  int
-	TotalPages   int
-	HasPrevious  bool
-	HasNext      bool
-	PreviousPage int
-	NextPage     int
-}
-
-type FilterData struct {
-	Tags    []string
-	Vendors []string
-	Active  struct {
-		Tag    string
-		Vendor string
-	}
-}
 
 const ITEMS_PER_PAGE = 50
 
@@ -68,7 +34,7 @@ func readSites() [][]string {
 	return sites[1:]
 }
 
-func getUniqueFilters(products []ProductCard) FilterData {
+func getUniqueFilters(products []models.ProductCard) models.FilterData {
 	tagMap := make(map[string]bool)
 	vendorMap := make(map[string]bool)
 
@@ -90,14 +56,14 @@ func getUniqueFilters(products []ProductCard) FilterData {
 	sort.Strings(tags)
 	sort.Strings(vendors)
 
-	return FilterData{
+	return models.FilterData{
 		Tags:    tags,
 		Vendors: vendors,
 	}
 }
 
-func filterProducts(products []ProductCard, tag, vendor, search string) []ProductCard {
-	var filtered []ProductCard
+func filterProducts(products []models.ProductCard, tag, vendor, search string) []models.ProductCard {
+	var filtered []models.ProductCard
 
 	for _, product := range products {
 		matchesTag := tag == "" || contains(product.Tags, tag)
@@ -143,7 +109,7 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 		siteDomainMap[site[0]] = site[1]
 	}
 
-	var allProducts []ProductCard
+	var allProducts []models.ProductCard
 
 	// Read JSON directory
 	jsonDir, err := os.ReadDir("json")
@@ -185,7 +151,7 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 				} else if len(product.Images) > 0 {
 					imageLink = product.Images[0].Src
 				}
-				allProducts = append(allProducts, ProductCard{
+				allProducts = append(allProducts, models.ProductCard{
 					ImageLink:    imageLink,
 					ProductTitle: fmt.Sprintf("%s - %s", product.Title, variant.Title),
 					Price:        variant.Price,
@@ -223,9 +189,9 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 
 	pageProducts := filteredProducts[startIndex:endIndex]
 
-	pageData := PageData{
+	pageData := models.PageData{
 		Products: pageProducts,
-		Pagination: PaginationData{
+		Pagination: models.PaginationData{
 			CurrentPage:  currentPage,
 			TotalPages:   totalPages,
 			HasPrevious:  currentPage > 1,
