@@ -18,6 +18,7 @@ import (
 
 const ITEMS_PER_PAGE = 50
 
+// GLobal variable
 var allProducts []models.ProductCard
 var filters models.FilterData
 
