@@ -263,7 +263,7 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
-	http.Handle("/", limiter.RateLimiter(renderTemplate))
+	http.Handle("/", limiter.PerClientRateLimiter(renderTemplate))
 
 	fmt.Println("Server running on port 8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
