@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ChrolloKryber/shopify-scraper/limiter"
 	"github.com/ChrolloKryber/shopify-scraper/models"
 )
 
@@ -262,7 +263,7 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
-	http.HandleFunc("/", renderTemplate)
+	http.Handle("/", limiter.RateLimiter(renderTemplate))
 
 	fmt.Println("Server running on port 8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))

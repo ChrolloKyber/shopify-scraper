@@ -58,3 +58,8 @@ type Info struct {
 		} `json:"images"`
 	} `json:"products"`
 }
+
+type Message struct {
+	Status string `json:"status"`
+	Body   string `json:"body"`
+}
