@@ -17,7 +17,7 @@ import (
 	"github.com/ChrolloKryber/shopify-scraper/models"
 )
 
-const ITEMS_PER_PAGE = 50
+const ITEMS_PER_PAGE = 51
 
 // Reads sites.csv and returns a mapping of site names to domains
 func readSites() map[string]string {
