@@ -4,10 +4,13 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/ChrolloKryber/shopify-scraper/limiter"
@@ -178,6 +181,86 @@ func loadProducts() []models.ProductCard {
 
 	return allProducts
 }
+
+// Handler function to render the index page
+func renderTemplate(w http.ResponseWriter, r *http.Request) {
+	tag := r.URL.Query().Get("tag")
+	vendor := r.URL.Query().Get("vendor")
+	search := r.URL.Query().Get("search")
+	pageStr := r.URL.Query().Get("page")
+
+	currentPage := 1
+	if pageStr != "" {
+		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
+			currentPage = page
+		}
+	}
+
+	// Load products
+	allProducts := loadProducts()
+	if allProducts == nil {
+		http.Error(w, "Failed to load products", http.StatusInternalServerError)
+		return
+	}
+
+	// Generate filters
+	filters := getUniqueFilters(allProducts)
+	filters.Active.Tag = tag
+	filters.Active.Vendor = vendor
+
+	// Apply filtering
+	filteredProducts := filterProducts(allProducts, tag, vendor, search)
+
+	// Pagination logic
+	totalItems := len(filteredProducts)
+	totalPages := int(math.Ceil(float64(totalItems) / float64(ITEMS_PER_PAGE)))
+	if currentPage > totalPages {
+		currentPage = totalPages
+	}
+	if currentPage < 1 {
+		currentPage = 1
+	}
+
+	startIndex := (currentPage - 1) * ITEMS_PER_PAGE
+	endIndex := startIndex + ITEMS_PER_PAGE
+	if endIndex > totalItems {
+		endIndex = totalItems
+	}
+
+	pageProducts := filteredProducts[startIndex:endIndex]
+
+	// Prepare page data
+	pageData := models.PageData{
+		Products: pageProducts,
+		Pagination: models.PaginationData{
+			CurrentPage:  currentPage,
+			TotalPages:   totalPages,
+			HasPrevious:  currentPage > 1,
+			HasNext:      currentPage < totalPages,
+			PreviousPage: currentPage - 1,
+			NextPage:     currentPage + 1,
+			Tag:          tag,
+			Vendor:       vendor,
+		},
+		Filters:     filters,
+		SearchQuery: search,
+	}
+
+	// Render template
+	tmpl, err := template.ParseFiles(
+		"./views/index.html",
+		"./views/product_card.html",
+		"./views/pagination.html",
+		"./views/filters.html",
+	)
+	if err != nil {
+		http.Error(w, "Error rendering template", http.StatusInternalServerError)
+		return
+	}
+
+	tmpl.ExecuteTemplate(w, "index", pageData)
+}
+
 func main() {
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	http.Handle("/", limiter.PerClientRateLimiter(renderTemplate))
