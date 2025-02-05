@@ -184,6 +184,22 @@ func loadProducts() []models.ProductCard {
 
 // Handler function to render the index page
 func renderTemplate(w http.ResponseWriter, r *http.Request) {
+	tag, vendor, search, currentPage := parseQueryParams(r)
+
+	allProducts := loadProducts()
+	if allProducts == nil {
+		http.Error(w, "Failed to load products", http.StatusInternalServerError)
+		return
+	}
+
+	filters := generateFilters(allProducts, tag, vendor)
+	filteredProducts, totalPages := applyFilteringAndPagination(allProducts, tag, vendor, search, currentPage)
+
+	pageData := preparePageData(filteredProducts, filters, search, currentPage, totalPages, tag, vendor)
+	renderHTML(w, pageData)
+}
+
+func parseQueryParams(r *http.Request) (string, string, string, int) {
 	tag := r.URL.Query().Get("tag")
 	vendor := r.URL.Query().Get("vendor")
 	search := r.URL.Query().Get("search")
@@ -195,25 +211,24 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 			currentPage = page
 		}
 	}
+	return tag, vendor, search, currentPage
+}
 
-	// Load products
-	allProducts := loadProducts()
-	if allProducts == nil {
-		http.Error(w, "Failed to load products", http.StatusInternalServerError)
-		return
-	}
-
-	// Generate filters
-	filters := getUniqueFilters(allProducts)
+func generateFilters(products []models.ProductCard, tag, vendor string) models.FilterData {
+	filters := getUniqueFilters(products)
 	filters.Active.Tag = tag
 	filters.Active.Vendor = vendor
+	return filters
+}
 
-	// Apply filtering
-	filteredProducts := filterProducts(allProducts, tag, vendor, search)
-
-	// Pagination logic
+func applyFilteringAndPagination(products []models.ProductCard, tag, vendor, search string, currentPage int) ([]models.ProductCard, int) {
+	filteredProducts := filterProducts(products, tag, vendor, search)
 	totalItems := len(filteredProducts)
 	totalPages := int(math.Ceil(float64(totalItems) / float64(ITEMS_PER_PAGE)))
+	if totalPages == 0 {
+		totalPages = 1
+	}
+
 	if currentPage > totalPages {
 		currentPage = totalPages
 	}
@@ -222,16 +237,14 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	startIndex := (currentPage - 1) * ITEMS_PER_PAGE
-	endIndex := startIndex + ITEMS_PER_PAGE
-	if endIndex > totalItems {
-		endIndex = totalItems
-	}
+	endIndex := min(startIndex+ITEMS_PER_PAGE, totalItems)
 
-	pageProducts := filteredProducts[startIndex:endIndex]
+	return filteredProducts[startIndex:endIndex], totalPages
+}
 
-	// Prepare page data
-	pageData := models.PageData{
-		Products: pageProducts,
+func preparePageData(products []models.ProductCard, filters models.FilterData, search string, currentPage, totalPages int, tag, vendor string) models.PageData {
+	return models.PageData{
+		Products: products,
 		Pagination: models.PaginationData{
 			CurrentPage:  currentPage,
 			TotalPages:   totalPages,
@@ -245,8 +258,9 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 		Filters:     filters,
 		SearchQuery: search,
 	}
+}
 
-	// Render template
+func renderHTML(w http.ResponseWriter, pageData models.PageData) {
 	tmpl, err := template.ParseFiles(
 		"./views/index.html",
 		"./views/product_card.html",
@@ -257,8 +271,14 @@ func renderTemplate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 		return
 	}
-
 	tmpl.ExecuteTemplate(w, "index", pageData)
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func main() {
