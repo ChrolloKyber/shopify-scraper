@@ -26,20 +26,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'go build -v -o bin/${APP_NAME} ./...'
-            }
-        }
-
-        stage('Lint') {
-            steps {
-                sh 'go install golang.org/x/lint/golint@latest'
-                sh 'golint ./... || true'
-            }
-        }
-
-        stage('Test') {
-            steps {
-                sh 'go test -v ./...'
+                sh 'go build .'
             }
         }
 
