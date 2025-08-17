@@ -29,17 +29,6 @@ pipeline {
                 sh 'go build .'
             }
         }
-
-        stage('Docker Build') {
-            when {
-                expression { fileExists('Dockerfile') }
-            }
-            steps {
-                script {
-                    docker.build("${APP_NAME}:latest")
-                }
-            }
-        }
     }
 
     post {
