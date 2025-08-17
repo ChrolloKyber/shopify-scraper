@@ -17,19 +17,6 @@ pipeline {
             }
         }
 
-        stage('Set Up Go') {
-            steps {
-                script {
-                    // Set up Go environment if needed, for Jenkins with multiple Go versions
-                    if (env.GOROOT == null) {
-                        sh "wget https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
-                        sh "sudo tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz"
-                        env.PATH = "/usr/local/go/bin:${env.PATH}"
-                    }
-                }
-            }
-        }
-
         stage('Dependencies') {
             steps {
                 sh 'go mod download'
